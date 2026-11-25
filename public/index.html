@@ -1,11 +1,14 @@
+
 <!DOCTYPE html>
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cricket Live Score</title>
+<title>Live Cricket Score</title>
 
 <style>
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   margin: 0;
@@ -24,13 +27,16 @@ body {
   text-align: center;
 }
 
-h2 { color: #ffd45c; }
+h2 {
+  color: #ffd45c;
+}
 
 select {
   padding: 12px;
   width: 100%;
   border-radius: 7px;
   margin: 10px 0;
+  font-size: 15px;
 }
 
 .score {
@@ -39,35 +45,62 @@ select {
   margin: 16px 0;
 }
 
-.status { color: #9ee6a5; }
-.small { color: #d4e0ed; }
+.status {
+  color: #9ee6a5;
+  font-size: 18px;
+}
+
+.small {
+  color: #d4e0ed;
+}
+
+.inning {
+  color: #d4e0ed;
+  margin-top: 5px;
+}
+
+#details {
+  overflow-wrap: anywhere;
+}
 </style>
 </head>
 
 <body>
+
 <div class="board">
+
   <h2>🏏 LIVE CRICKET SCORE</h2>
 
   <select id="matches">
-    <option>Loading matches...</option>
+    <option>Loading live matches...</option>
   </select>
 
   <div id="details">Loading...</div>
+
   <p class="small" id="updated"></p>
+
 </div>
 
 <script>
+
 let allMatches = [];
 
+function isLive(match) {
+  return match.matchStarted === true &&
+         match.matchEnded !== true;
+}
+
 function showMatch() {
+
   const index = document.getElementById("matches").value;
   const match = allMatches[index];
+
   const box = document.getElementById("details");
 
   box.innerHTML = "";
 
   if (!match) {
-    box.textContent = "No match available";
+    box.textContent = "No live matches currently.";
     return;
   }
 
@@ -75,60 +108,103 @@ function showMatch() {
   title.textContent = match.name || "Cricket Match";
   box.appendChild(title);
 
+  if (match.matchType) {
+    const type = document.createElement("p");
+    type.className = "small";
+    type.textContent = match.matchType.toUpperCase();
+    box.appendChild(type);
+  }
+
   (match.score || []).forEach(s => {
+
     const score = document.createElement("div");
     score.className = "score";
+
     score.textContent =
-      `${s.r} / ${s.w} (${s.o} Overs)`;
+      `${s.r ?? 0} / ${s.w ?? 0} (${s.o ?? 0} Overs)`;
+
     box.appendChild(score);
 
     const inning = document.createElement("p");
+    inning.className = "inning";
     inning.textContent = s.inning || "";
+
     box.appendChild(inning);
+
   });
 
   const status = document.createElement("p");
   status.className = "status";
-  status.textContent = match.status || "Status unavailable";
+  status.textContent = match.status || "LIVE";
   box.appendChild(status);
 }
 
 async function loadScores() {
+
+  const details = document.getElementById("details");
+
   try {
+
     const response = await fetch("/api/matches");
     const result = await response.json();
 
-    if (!response.ok) throw new Error("API error");
+    if (!response.ok) {
+      throw new Error("API error");
+    }
 
-    allMatches = result.data || [];
+    const previousMatch =
+      allMatches[document.getElementById("matches").value];
+
+    const previousName = previousMatch
+      ? previousMatch.name
+      : "";
+
+    allMatches = (result.data || []).filter(isLive);
 
     const dropdown = document.getElementById("matches");
-    const previous = dropdown.value;
 
     dropdown.innerHTML = "";
 
+    if (allMatches.length === 0) {
+
+      details.textContent =
+        "No live matches currently. Please check again later.";
+
+      document.getElementById("updated").textContent =
+        "Updated: " + new Date().toLocaleTimeString();
+
+      return;
+    }
+
     allMatches.forEach((match, i) => {
+
       const option = document.createElement("option");
+
       option.value = i;
-      option.textContent = match.name || "Match " + (i + 1);
+      option.textContent = match.name || "Live Match";
+
       dropdown.appendChild(option);
+
     });
 
-    if (allMatches.length) {
-      dropdown.value =
-        previous < allMatches.length ? previous : "0";
-      showMatch();
-    } else {
-      document.getElementById("details").textContent =
-        "No current matches available";
-    }
+    const oldIndex = allMatches.findIndex(
+      m => m.name === previousName
+    );
+
+    dropdown.value = oldIndex >= 0
+      ? oldIndex
+      : "0";
+
+    showMatch();
 
     document.getElementById("updated").textContent =
       "Updated: " + new Date().toLocaleTimeString();
 
   } catch (error) {
-    document.getElementById("details").textContent =
-      "Unable to load score. Please try again.";
+
+    details.textContent =
+      "Unable to load live scores. Please try again.";
+
   }
 }
 
@@ -136,7 +212,10 @@ document.getElementById("matches")
   .addEventListener("change", showMatch);
 
 loadScores();
+
 setInterval(loadScores, 300000);
+
 </script>
+
 </body>
 </html>
