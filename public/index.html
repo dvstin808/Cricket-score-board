@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cricket Live Score</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: transparent;
+  color: white;
+  font-family: Arial, sans-serif;
+}
+
+.board {
+  background: #10243b;
+  border: 2px solid #e2b84b;
+  border-radius: 14px;
+  padding: 18px;
+  max-width: 600px;
+  margin: 15px auto;
+  text-align: center;
+}
+
+h2 { color: #ffd45c; }
+
+select {
+  padding: 12px;
+  width: 100%;
+  border-radius: 7px;
+  margin: 10px 0;
+}
+
+.score {
+  font-size: 38px;
+  font-weight: bold;
+  margin: 16px 0;
+}
+
+.status { color: #9ee6a5; }
+.small { color: #d4e0ed; }
+</style>
+</head>
+
+<body>
+<div class="board">
+  <h2>🏏 LIVE CRICKET SCORE</h2>
+
+  <select id="matches">
+    <option>Loading matches...</option>
+  </select>
+
+  <div id="details">Loading...</div>
+  <p class="small" id="updated"></p>
+</div>
+
+<script>
+let allMatches = [];
+
+function showMatch() {
+  const index = document.getElementById("matches").value;
+  const match = allMatches[index];
+  const box = document.getElementById("details");
+
+  box.innerHTML = "";
+
+  if (!match) {
+    box.textContent = "No match available";
+    return;
+  }
+
+  const title = document.createElement("h3");
+  title.textContent = match.name || "Cricket Match";
+  box.appendChild(title);
+
+  (match.score || []).forEach(s => {
+    const score = document.createElement("div");
+    score.className = "score";
+    score.textContent =
+      `${s.r} / ${s.w} (${s.o} Overs)`;
+    box.appendChild(score);
+
+    const inning = document.createElement("p");
+    inning.textContent = s.inning || "";
+    box.appendChild(inning);
+  });
+
+  const status = document.createElement("p");
+  status.className = "status";
+  status.textContent = match.status || "Status unavailable";
+  box.appendChild(status);
+}
+
+async function loadScores() {
+  try {
+    const response = await fetch("/api/matches");
+    const result = await response.json();
+
+    if (!response.ok) throw new Error("API error");
+
+    allMatches = result.data || [];
+
+    const dropdown = document.getElementById("matches");
+    const previous = dropdown.value;
+
+    dropdown.innerHTML = "";
+
+    allMatches.forEach((match, i) => {
+      const option = document.createElement("option");
+      option.value = i;
+      option.textContent = match.name || "Match " + (i + 1);
+      dropdown.appendChild(option);
+    });
+
+    if (allMatches.length) {
+      dropdown.value =
+        previous < allMatches.length ? previous : "0";
+      showMatch();
+    } else {
+      document.getElementById("details").textContent =
+        "No current matches available";
+    }
+
+    document.getElementById("updated").textContent =
+      "Updated: " + new Date().toLocaleTimeString();
+
+  } catch (error) {
+    document.getElementById("details").textContent =
+      "Unable to load score. Please try again.";
+  }
+}
+
+document.getElementById("matches")
+  .addEventListener("change", showMatch);
+
+loadScores();
+setInterval(loadScores, 300000);
+</script>
+</body>
+</html>
